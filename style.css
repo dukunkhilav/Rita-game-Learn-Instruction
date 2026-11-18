@@ -1,0 +1,637 @@
+/* ==========================================================
+   CSS Aplikasi Edukasi Tunagrahita - Android Friendly
+   - Berwarna ceria namun ramah sensorik (pastel-vibrant yang hangat)
+   - Ukuran target sentuh/tap ekstra besar (Touch target > 60px)
+   - Anti-zoom dan touch-action khusus untuk kenyamanan drag-drop di Android/HP
+   - Efek visual interaktif saat drag & drop
+   - Mendukung Multi-Sentence Instructions & Step Checklists (Level 11-15)
+   ========================================================== */
+
+:root {
+  --bg-app: #F0F4F8;
+  --bg-card: #FFFFFF;
+  --text-dark: #1E293B;
+  --text-muted: #64748B;
+  
+  /* Palet Warna Ceria & Hangat */
+  --color-primary: #4F46E5;
+  --color-primary-dark: #4338CA;
+  --color-teal: #0D9488;
+  --color-sky: #0284C7;
+  --color-amber: #D97706;
+  --color-rose: #E11D48;
+  --color-emerald: #059669;
+
+  --feedback-success-bg: #DCFCE7;
+  --feedback-success-text: #166534;
+  --feedback-encourage-bg: #FEF3C7;
+  --feedback-encourage-text: #92400E;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--bg-app);
+  color: var(--text-dark);
+  line-height: 1.4;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+.app-container {
+  max-width: 920px;
+  width: 100%;
+  margin: 0 auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+}
+
+/* Header */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #4F46E5, #6366F1);
+  color: #FFFFFF;
+  padding: 12px 16px;
+  border-radius: 18px;
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.2);
+  gap: 10px;
+}
+
+.header-center h1 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  text-align: center;
+  color: #FFFFFF;
+}
+
+.nav-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  padding: 8px 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border-radius: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  transition: all 0.2s ease;
+}
+
+.nav-btn:hover, .nav-btn:active {
+  background-color: rgba(255, 255, 255, 0.35);
+  transform: scale(0.97);
+}
+
+/* Sections */
+.view-section {
+  display: none;
+  flex: 1;
+  margin-top: 14px;
+}
+
+.view-section.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Menu Banner */
+.menu-banner {
+  background-color: #FFFFFF;
+  border-radius: 20px;
+  padding: 18px 20px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  margin-bottom: 14px;
+  border: 2px solid #E2E8F0;
+}
+
+.menu-banner h2 {
+  font-size: 1.5rem;
+  color: #1E293B;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+/* Grid Level 1 - 15 Ramah HP */
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  gap: 12px;
+  padding-bottom: 20px;
+}
+
+.level-card {
+  background-color: #FFFFFF;
+  border: 3px solid #CBD5E1;
+  border-radius: 20px;
+  padding: 14px 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.04);
+}
+
+.level-card:hover, .level-card:active {
+  transform: translateY(-3px) scale(1.02);
+  border-color: var(--color-primary);
+  box-shadow: 0 8px 16px rgba(79, 70, 229, 0.15);
+}
+
+.level-num-badge {
+  color: #FFFFFF;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+
+.level-icon {
+  font-size: 2.8rem;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.level-card h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1E293B;
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+
+.level-card p {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+/* Kotak Instruksi yang Jelas & Terbaca */
+.instruction-box {
+  background: #FFFFFF;
+  border: 3px solid #818CF8;
+  border-radius: 20px;
+  padding: 16px 18px;
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.12);
+  margin-bottom: 12px;
+}
+
+.instruction-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.badge-level {
+  background-color: #EEF2FF;
+  color: #4338CA;
+  font-weight: 800;
+  font-size: 0.85rem;
+  padding: 4px 12px;
+  border-radius: 12px;
+  border: 1.5px solid #C7D2FE;
+}
+
+.badge-step {
+  background-color: #FEF3C7;
+  color: #92400E;
+  font-weight: 800;
+  font-size: 0.85rem;
+  padding: 4px 12px;
+  border-radius: 12px;
+  border: 1.5px solid #FDE68A;
+}
+
+.badge-round {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.instruction-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.instruction-text {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #1E293B;
+  line-height: 1.45;
+  white-space: pre-line;
+}
+
+/* Checklist Instruksi Kompleks (Level 11-15) */
+.checklist-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #475569;
+  background-color: #F8FAFC;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1.5px solid #E2E8F0;
+  transition: all 0.2s ease;
+}
+
+.checklist-item.active-step {
+  background-color: #EFF6FF;
+  color: #1D4ED8;
+  border-color: #93C5FD;
+}
+
+.checklist-item.done-step {
+  background-color: #ECFDF5;
+  color: #047857;
+  border-color: #A7F3D0;
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+
+.speak-btn {
+  background-color: #EEF2FF;
+  border: 2.5px solid var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 800;
+  font-size: 0.95rem;
+  padding: 10px 14px;
+  border-radius: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 44px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  align-self: flex-start;
+}
+
+.speak-btn:hover, .speak-btn:active {
+  background-color: #E0E7FF;
+  transform: scale(0.97);
+}
+
+/* Arena Permainan */
+.play-area {
+  flex: 1;
+  background-color: var(--bg-card);
+  border: 3px solid #E2E8F0;
+  border-radius: 24px;
+  min-height: 380px;
+  padding: 20px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+/* Target Area (Wadah/Piring/Kotak) */
+.targets-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 22px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.drop-target {
+  min-width: 135px;
+  min-height: 135px;
+  border: 4px dashed #94A3B8;
+  background-color: #F8FAFC;
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  transition: all 0.25s ease;
+  position: relative;
+}
+
+.drop-target.highlight-hover {
+  border-color: #4F46E5;
+  background-color: #EEF2FF;
+  transform: scale(1.06);
+}
+
+.drop-target .target-icon {
+  font-size: 3.2rem;
+  line-height: 1;
+  margin-bottom: 4px;
+  pointer-events: none;
+}
+
+.drop-target .target-label {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #475569;
+  text-align: center;
+  pointer-events: none;
+}
+
+.target-contents {
+  display: flex;
+  gap: 4px;
+  font-size: 1.8rem;
+  min-height: 32px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Objek-objek yang bisa ditap / didrag */
+.items-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.game-item {
+  width: 105px;
+  height: 105px;
+  background: #FFFFFF;
+  border: 3.5px solid #CBD5E1;
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none; /* Krusial untuk Android Touch */
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+  position: relative;
+  z-index: 10;
+}
+
+.game-item:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.18);
+}
+
+.game-item.touch-held {
+  cursor: grabbing;
+  opacity: 0.9;
+  transform: scale(1.15);
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.2);
+  z-index: 999;
+}
+
+.game-item .item-icon {
+  font-size: 3.2rem;
+  line-height: 1;
+  margin-bottom: 4px;
+  pointer-events: none;
+}
+
+.game-item .item-name {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #334155;
+  pointer-events: none;
+}
+
+/* Target Area Meja / Workspace (Level 9-15) */
+.nested-workspace {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+}
+
+.table-surface {
+  width: 92%;
+  max-width: 520px;
+  min-height: 140px;
+  background: #FEF3C7;
+  border: 4px dashed #D97706;
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  position: relative;
+  transition: all 0.25s ease;
+}
+
+.table-surface.highlight-hover {
+  background: #FDE68A;
+  transform: scale(1.04);
+}
+
+.table-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #B45309;
+  margin-bottom: 6px;
+}
+
+/* Umpan Balik / Feedback Banner */
+.feedback-banner {
+  margin-top: 12px;
+  padding: 12px 18px;
+  border-radius: 16px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.25s ease;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.feedback-banner.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.feedback-banner.success {
+  background-color: var(--feedback-success-bg);
+  color: var(--feedback-success-text);
+  border: 2px solid #86EFAC;
+}
+
+.feedback-banner.encourage {
+  background-color: var(--feedback-encourage-bg);
+  color: var(--feedback-encourage-text);
+  border: 2px solid #FDE68A;
+}
+
+/* Modal Popup Selesai Level */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.65);
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-card {
+  background-color: #FFFFFF;
+  border-radius: 26px;
+  border: 4px solid #818CF8;
+  padding: 30px 22px;
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 25px 35px -5px rgba(0, 0, 0, 0.25);
+  animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modalPop {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.celebration-icon {
+  font-size: 2.8rem;
+  margin-bottom: 10px;
+}
+
+.modal-card h2 {
+  font-size: 1.6rem;
+  color: #15803D;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.modal-card p {
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  margin-bottom: 22px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.action-btn {
+  padding: 14px 20px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  border-radius: 16px;
+  border: none;
+  cursor: pointer;
+  min-height: 48px;
+  transition: all 0.2s ease;
+}
+
+.action-btn.primary {
+  background: linear-gradient(135deg, #4F46E5, #6366F1);
+  color: #FFFFFF;
+  flex: 1;
+}
+
+.action-btn.secondary {
+  background-color: #F1F5F9;
+  color: #334155;
+  border: 2px solid #CBD5E1;
+}
+
+/* Responsif Layar HP Android */
+@media (max-width: 480px) {
+  .app-container {
+    padding: 8px;
+  }
+  .app-header {
+    padding: 10px 12px;
+  }
+  .header-center h1 {
+    font-size: 1.05rem;
+  }
+  .nav-btn {
+    padding: 6px 10px;
+    font-size: 0.85rem;
+  }
+  .instruction-text {
+    font-size: 1.1rem;
+  }
+  .speak-btn {
+    width: 100%;
+    font-size: 0.9rem;
+  }
+  .game-item {
+    width: 90px;
+    height: 90px;
+  }
+  .game-item .item-icon {
+    font-size: 2.7rem;
+  }
+  .game-item .item-name {
+    font-size: 0.8rem;
+  }
+  .drop-target {
+    min-width: 115px;
+    min-height: 115px;
+  }
+  .drop-target .target-icon {
+    font-size: 2.6rem;
+  }
+  .modal-actions {
+    flex-direction: column;
+  }
+}

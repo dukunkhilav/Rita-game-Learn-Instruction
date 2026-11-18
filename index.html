@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#4F46E5">
+  <title>Ayo Belajar Ikuti Instruksi</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header Ramah Anak & Android -->
+    <header class="app-header">
+      <button id="btnHome" class="nav-btn" title="Kembali ke Menu Utama">🏠 Menu</button>
+      <div class="header-center">
+        <h1 id="appTitle">Ayo Ikuti Instruksi</h1>
+      </div>
+      <button id="btnVoiceToggle" class="nav-btn" title="Nyalakan / Matikan Suara">🔊 Suara</button>
+    </header>
+
+    <!-- Halaman 1: Menu Utama / Pemilihan 10 Level -->
+    <main id="viewMenu" class="view-section active">
+      <div class="menu-banner">
+        <h2>Pilih Tingkat Permainan</h2>
+        <p class="subtitle">Sentuh kotak tingkat di bawah untuk mulai bermain:</p>
+      </div>
+      
+      <!-- Grid 10 Level Cards -->
+      <div id="levelGrid" class="level-grid">
+        <!-- Disuntikkan secara dinamis via JavaScript -->
+      </div>
+    </main>
+
+    <!-- Halaman 2: Layar Arena Game -->
+    <main id="viewGame" class="view-section">
+      <!-- Kotak Instruksi Jelas, Menarik, dan Interaktif -->
+      <div class="instruction-box">
+        <div class="instruction-meta">
+          <span id="levelLabel" class="badge-level">Tingkat 1</span>
+          <span id="stepProgressLabel" class="badge-step">Langkah 1 dari 1</span>
+          <span id="progressLabel" class="badge-round">Soal 1/2</span>
+        </div>
+        <div class="instruction-content">
+          <p id="instructionText" class="instruction-text">Memuat instruksi...</p>
+          <button id="btnSpeakInstruction" class="speak-btn" title="Dengarkan kembali suara instruksi">
+            🔊 Dengarkan Lagi
+          </button>
+        </div>
+      </div>
+
+      <!-- Arena Interaksi Game (Tap & Drag-Drop Touch Friendly) -->
+      <div id="gamePlayArea" class="play-area">
+        <!-- Elemen interaksi diinjeksi via JavaScript -->
+      </div>
+
+      <!-- Banner Umpan Balik Positif -->
+      <div id="feedbackBanner" class="feedback-banner"></div>
+    </main>
+
+    <!-- Dialog / Modal Selamat Selesai Level -->
+    <div id="successModal" class="modal-overlay">
+      <div class="modal-card">
+        <div class="celebration-icon">🎉 ⭐ 🎉</div>
+        <h2 id="modalTitle">Hebat Sekali!</h2>
+        <p id="modalDesc">Kamu berhasil mengikuti semua langkah dengan pintar.</p>
+        <div class="modal-actions">
+          <button id="btnRepeatLevel" class="action-btn secondary">🔄 Ulangi</button>
+          <button id="btnNextLevel" class="action-btn primary">Tingkat Berikutnya ➔</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
