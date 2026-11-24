@@ -1,12 +1,9 @@
 /**
  * Logika Permainan 15 Level Lengkap untuk Anak Tunagrahita
- * Level 1-10: Dari instruksi tunggal hingga 2 urutan / nested task sederhana
- * Level 11-15: Multi-sentence instructions (instruksi majemuk / bertingkat yang menantang pemahaman anak)
- *
  * Fitur:
  * - Touch & Mouse Drag and Drop (Pointer Events API) + Tap fallback
  * - Checklist visual interaktif untuk instruksi banyak kalimat
- * - Text-to-Speech otomatis bahasa Indonesia yang jelas dan berulang
+ * - Perbaikan Suara Umpan Balik: Tuntas, tidak terpotong saat transisi soal
  * - Efek audio positif lembut
  */
 
@@ -260,7 +257,7 @@ const gameLevelsConfig = [
   {
     level: 11,
     title: "Instruksi Rangkaian 3 Aksi",
-    desc: "Tiga perintah berturut-turut dalam satu kalimat panjang",
+    desc: "Tiga perintah berturut-turut dalam satu alur cerita",
     icon: "3️⃣",
     color: "#0891B2",
     questions: [
@@ -356,7 +353,7 @@ const gameLevelsConfig = [
   {
     level: 15,
     title: "Merapikan Kamar Lengkap (Tugas Kompleks)",
-    desc: "Instruksi multi-langkah: buku ke meja, baju ke lemari, sampah ke tong",
+    desc: "Instruksi multi-langkah: baju ke lemari, buku ke meja, sampah ke tong",
     icon: "🏆",
     color: "#4338CA",
     questions: [
@@ -390,6 +387,7 @@ let currentQuestionIndex = 0;
 let currentStepIndex = 0;
 let isAudioEnabled = true;
 let isProcessing = false;
+let unlockInputTimer = null;
 
 // DOM Referensi
 const viewMenu = document.getElementById("viewMenu");
@@ -448,23 +446,48 @@ function playTone(type) {
   }
 }
 
-// Text to Speech
+// ================= SUARA TEXT-TO-SPEECH =================
+function stopAllSpeech() {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+}
+
 function speakText(text) {
   if (!isAudioEnabled || !('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
-  
-  // Format bacaan ramah anak
+
   const cleanText = text.replace(/Langkah \d+:|\d+\./gi, '').trim();
-  const utterance = new SpeechSynthesisUtterance(cleanText || text);
-  utterance.lang = 'id-ID';
-  utterance.rate = 0.85;
-  utterance.pitch = 1.05;
+  if (!cleanText) return;
 
-  const voices = window.speechSynthesis.getVoices();
-  const idVoice = voices.find(v => v.lang.includes('id') || v.lang.includes('ID'));
-  if (idVoice) utterance.voice = idVoice;
+  try {
+    window.speechSynthesis.cancel();
 
-  window.speechSynthesis.speak(utterance);
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'id-ID';
+    utterance.rate = 0.85; // Tempo santai & artikulasi jelas
+    utterance.pitch = 1.05;
+
+    const voices = window.speechSynthesis.getVoices();
+    const idVoice = voices.find(v => v.lang.includes('id') || v.lang.includes('ID'));
+    if (idVoice) utterance.voice = idVoice;
+
+    window.speechSynthesis.speak(utterance);
+  } catch (e) {
+    console.warn("Speech synthesis error:", e);
+  }
+}
+
+function speakInstructionWithProtection(text) {
+  const wordCount = (text || "").split(/\s+/).filter(Boolean).length;
+  const estimatedDurationMs = isAudioEnabled ? Math.min(6000, Math.max(1400, (wordCount * 450) + 600)) : 100;
+
+  isProcessing = true;
+  speakText(text);
+
+  if (unlockInputTimer) clearTimeout(unlockInputTimer);
+  unlockInputTimer = setTimeout(() => {
+    isProcessing = false;
+  }, estimatedDurationMs);
 }
 
 // Event Listeners Navigasi
@@ -472,26 +495,32 @@ btnHome.addEventListener("click", () => {
   viewGame.classList.remove("active");
   viewMenu.classList.add("active");
   successModal.classList.remove("active");
-  window.speechSynthesis.cancel();
+  if (unlockInputTimer) clearTimeout(unlockInputTimer);
+  stopAllSpeech();
 });
 
 btnVoiceToggle.addEventListener("click", () => {
   isAudioEnabled = !isAudioEnabled;
   btnVoiceToggle.innerText = isAudioEnabled ? "🔊 Suara: Nyala" : "🔇 Suara: Mati";
-  if (!isAudioEnabled) window.speechSynthesis.cancel();
+  if (!isAudioEnabled) stopAllSpeech();
 });
 
 btnSpeakInstruction.addEventListener("click", () => {
-  speakText(instructionText.innerText);
+  const textToRead = instructionText.innerText || "";
+  speakInstructionWithProtection(textToRead);
 });
 
 btnRepeatLevel.addEventListener("click", () => {
   successModal.classList.remove("active");
+  if (unlockInputTimer) clearTimeout(unlockInputTimer);
+  stopAllSpeech();
   startLevel(currentLevelNumber);
 });
 
 btnNextLevel.addEventListener("click", () => {
   successModal.classList.remove("active");
+  if (unlockInputTimer) clearTimeout(unlockInputTimer);
+  stopAllSpeech();
   if (currentLevelNumber < 15) {
     startLevel(currentLevelNumber + 1);
   } else {
@@ -522,7 +551,8 @@ function startLevel(lvlNumber) {
   currentLevelNumber = lvlNumber;
   currentQuestionIndex = 0;
   currentStepIndex = 0;
-  isProcessing = false;
+  if (unlockInputTimer) clearTimeout(unlockInputTimer);
+  stopAllSpeech();
 
   viewMenu.classList.remove("active");
   viewGame.classList.add("active");
@@ -552,7 +582,6 @@ function renderChecklist(steps, currentIdx) {
 
 // Render Soal Sesuai Level
 function renderCurrentQuestion() {
-  isProcessing = false;
   clearFeedback();
 
   const currentLevelData = gameLevelsConfig.find(l => l.level === currentLevelNumber);
@@ -573,7 +602,7 @@ function renderCurrentQuestion() {
     const item = createGameItem(qData.icon, qData.name, () => {
       if (isProcessing) return;
       isProcessing = true;
-      triggerSuccess(`Hebat! Kamu berhasil menyentuh ${qData.name}!`);
+      triggerSuccess(`Hebat!`);
     });
     itemsContainer.appendChild(item);
     gamePlayArea.appendChild(itemsContainer);
@@ -596,7 +625,7 @@ function renderCurrentQuestion() {
         if (isProcessing) return;
         if (opt.isCorrect) {
           isProcessing = true;
-          triggerSuccess(`Bagus sekali! Itu benar ${opt.name}!`);
+          triggerSuccess(`Bagus sekali!`);
         } else {
           triggerEncourage(`Ayo coba lagi, cari ${qData.correct.name}`);
         }
@@ -694,14 +723,16 @@ function renderCurrentQuestion() {
 
           currentStepIndex++;
           if (currentStepIndex < qData.steps.length) {
-            triggerEncourage(`Bagus! Sekarang sentuh langkah selanjutnya.`);
-            setTimeout(() => updateSequenceStepDisplay(qData), 1000);
+            triggerEncourage(`Bagus!`);
+            setTimeout(() => {
+              updateSequenceStepDisplay(qData);
+            }, 1200);
           } else {
             isProcessing = true;
-            triggerSuccess("Hebat! Kamu mengikuti semua urutan dengan benar!");
+            triggerSuccess("Hebat! Benar semua!");
           }
         } else {
-          triggerEncourage(`Belum tepat. ${currentExpectedStep.text}`);
+          triggerEncourage(`Belum tepat.`);
         }
       });
       itemsContainer.appendChild(itemEl);
@@ -747,7 +778,12 @@ function renderCurrentQuestion() {
 
     const currentStep = qData.steps[currentStepIndex];
     instructionText.innerHTML = `<strong>${qData.instructionStory}</strong>` + renderChecklist(qData.steps, currentStepIndex);
-    speakText(currentStep.text);
+    
+    if (currentStepIndex === 0) {
+      speakInstructionWithProtection(qData.instructionStory);
+    } else {
+      speakInstructionWithProtection(currentStep.text);
+    }
 
     const itemsContainer = document.createElement("div");
     itemsContainer.className = "items-container";
@@ -763,14 +799,16 @@ function renderCurrentQuestion() {
 
           currentStepIndex++;
           if (currentStepIndex < qData.steps.length) {
-            triggerEncourage(`Pintar! Lanjutkan langkah berikutnya!`);
-            setTimeout(() => renderCurrentQuestion(), 1000);
+            triggerEncourage(`Pintar!`);
+            setTimeout(() => {
+              renderCurrentQuestion();
+            }, 1200);
           } else {
             isProcessing = true;
-            triggerSuccess("Luar biasa! Ketiga instruksi berurutan berhasil kamu jalankan!");
+            triggerSuccess("Luar biasa!");
           }
         } else {
-          triggerEncourage(`Belum tepat. Dengarkan instruksi: ${currentStep.text}`);
+          triggerEncourage(`Belum tepat.`);
         }
       });
       itemsContainer.appendChild(itemEl);
@@ -786,7 +824,12 @@ function renderCurrentQuestion() {
 
     const currentStep = qData.steps[currentStepIndex];
     instructionText.innerHTML = `<strong>${qData.instructionStory}</strong>` + renderChecklist(qData.steps, currentStepIndex);
-    speakText(currentStep.text);
+    
+    if (currentStepIndex === 0) {
+      speakInstructionWithProtection(qData.instructionStory);
+    } else {
+      speakInstructionWithProtection(currentStep.text);
+    }
 
     const targetsContainer = document.createElement("div");
     targetsContainer.className = "targets-container";
@@ -824,7 +867,7 @@ function renderCurrentQuestion() {
     stepProgressLabel.innerText = "Instruksi Aturan";
 
     instructionText.innerHTML = `<strong>${qData.instructionStory}</strong>`;
-    speakText(qData.instructionStory);
+    speakInstructionWithProtection(qData.instructionStory);
 
     const targetsContainer = document.createElement("div");
     targetsContainer.className = "targets-container";
@@ -875,14 +918,16 @@ function handleDualContainerAction(itemData, itemEl, droppedTarget, qData) {
 
     currentStepIndex++;
     if (currentStepIndex < qData.steps.length) {
-      triggerEncourage("Bagus sekali! Sekarang selesaikan langkah selanjutnya.");
-      setTimeout(() => renderCurrentQuestion(), 1100);
+      triggerEncourage("Bagus sekali!");
+      setTimeout(() => {
+        renderCurrentQuestion();
+      }, 1200);
     } else {
       isProcessing = true;
-      triggerSuccess("Sempurna! Semua benda berhasil dimasukkan ke wadah yang benar!");
+      triggerSuccess("Sempurna!");
     }
   } else {
-    triggerEncourage(`Perhatikan kembali: ${currentStep.text}`);
+    triggerEncourage(`Belum tepat.`);
   }
 }
 
@@ -896,9 +941,9 @@ function handleConditionalAction(itemData, itemEl, wardrobe, qData) {
     const contents = wardrobe.querySelector(".target-contents");
     if (contents) contents.innerText = itemData.icon;
     itemEl.style.display = "none";
-    triggerSuccess("Pintar! Kamu memahami instruksi cuaca dan memilih benda yang tepat!");
+    triggerSuccess("Pintar!");
   } else {
-    triggerEncourage(itemData.forbidMsg || "Bukan benda itu. Dengarkan kembali instruksinya.");
+    triggerEncourage(itemData.forbidMsg || "Bukan benda itu.");
   }
 }
 
@@ -909,7 +954,12 @@ function renderNestedMultiLevel(qData) {
 
   const currentStep = qData.steps[currentStepIndex];
   instructionText.innerHTML = `<strong>${qData.instructionStory}</strong>` + renderChecklist(qData.steps, currentStepIndex);
-  speakText(currentStep.text);
+  
+  if (currentStepIndex === 0) {
+    speakInstructionWithProtection(qData.instructionStory);
+  } else {
+    speakInstructionWithProtection(currentStep.text);
+  }
 
   const nestedWrapper = document.createElement("div");
   nestedWrapper.className = "nested-workspace";
@@ -927,7 +977,6 @@ function renderNestedMultiLevel(qData) {
   const tableZone = table.querySelector("#tableZone");
   let plateElement = null;
 
-  // Jika langkah >= 1, piring sudah ada di atas meja
   if (currentStepIndex >= 1) {
     tableZone.innerHTML = `
       <div id="plateOnTable" class="drop-target" style="min-width: 130px; min-height: 110px; border-color: #059669; background: #DCFCE7;">
@@ -939,7 +988,6 @@ function renderNestedMultiLevel(qData) {
     plateElement = table.querySelector("#plateOnTable");
   }
 
-  // Jika langkah 3, roti sudah ada di atas piring
   if (currentStepIndex === 2 && plateElement) {
     const foodZone = plateElement.querySelector("#plateFoodZone");
     if (foodZone) foodZone.innerText = "🍞";
@@ -949,7 +997,6 @@ function renderNestedMultiLevel(qData) {
   itemsContainer.className = "items-container";
 
   qData.availableItems.forEach(itemData => {
-    // Sembunyikan item yang sudah diletakkan
     if (currentStepIndex >= 1 && itemData.id === "plate") return;
     if (currentStepIndex >= 2 && itemData.id === "bread") return;
 
@@ -980,14 +1027,16 @@ function handleNestedMultiAction(itemData, itemEl, table, plateElement, qData) {
 
     currentStepIndex++;
     if (currentStepIndex < qData.steps.length) {
-      triggerEncourage("Hebat! Lanjut ke langkah sarapan berikutnya!");
-      setTimeout(() => renderCurrentQuestion(), 1100);
+      triggerEncourage("Hebat!");
+      setTimeout(() => {
+        renderCurrentQuestion();
+      }, 1200);
     } else {
       isProcessing = true;
-      triggerSuccess("Luar biasa! Sarapan pagi sudah tersaji lengkap dan rapi di atas meja!");
+      triggerSuccess("Luar biasa!");
     }
   } else {
-    triggerEncourage(`Belum tepat. ${currentStep.text}`);
+    triggerEncourage(`Belum tepat.`);
   }
 }
 
@@ -998,7 +1047,12 @@ function renderRoomCleanupLevel(qData) {
 
   const currentStep = qData.steps[currentStepIndex];
   instructionText.innerHTML = `<strong>${qData.instructionStory}</strong>` + renderChecklist(qData.steps, currentStepIndex);
-  speakText(currentStep.text);
+  
+  if (currentStepIndex === 0) {
+    speakInstructionWithProtection(qData.instructionStory);
+  } else {
+    speakInstructionWithProtection(currentStep.text);
+  }
 
   const targetsContainer = document.createElement("div");
   targetsContainer.className = "targets-container";
@@ -1014,7 +1068,6 @@ function renderRoomCleanupLevel(qData) {
   itemsContainer.className = "items-container";
 
   qData.items.forEach(itemData => {
-    // Sembunyikan item yang sudah selesai dirapikan pada langkah sebelumnya
     if (qData.steps.slice(0, currentStepIndex).some(s => s.itemId === itemData.id)) {
       return;
     }
@@ -1048,14 +1101,16 @@ function handleRoomCleanupDrop(itemData, itemEl, droppedTarget, qData) {
 
     currentStepIndex++;
     if (currentStepIndex < qData.steps.length) {
-      triggerEncourage("Bagus! Sekarang lanjutkan merapikan benda berikutnya.");
-      setTimeout(() => renderCurrentQuestion(), 1100);
+      triggerEncourage("Bagus!");
+      setTimeout(() => {
+        renderCurrentQuestion();
+      }, 1200);
     } else {
       isProcessing = true;
-      triggerSuccess("Hebat luar biasa! Seluruh kamar sudah rapi dan bersih mengikuti semua instruksi!");
+      triggerSuccess("Hebat luar biasa!");
     }
   } else {
-    triggerEncourage(`Perhatikan kembali langkah ini: ${currentStep.text}`);
+    triggerEncourage(`Belum tepat.`);
   }
 }
 
@@ -1128,14 +1183,14 @@ function handleNestedStep1(itemData, itemEl, table, qData) {
     itemEl.style.transform = "scale(0.3) translateY(-100px)";
     itemEl.style.opacity = "0";
 
-    triggerEncourage(`Pintar! ${itemData.name} sudah di atas meja. Lanjut langkah kedua!`);
+    triggerEncourage(`Pintar!`);
     setTimeout(() => {
       currentStepIndex = 1;
       isProcessing = false;
       renderCurrentQuestion();
     }, 1300);
   } else {
-    triggerEncourage(`Bukan ${itemData.name}. Carilah ${qData.baseItems.find(b => b.id === currentStep.targetItemId).name}`);
+    triggerEncourage(`Bukan ${itemData.name}.`);
   }
 }
 
@@ -1148,9 +1203,9 @@ function handleNestedStep2(itemData, itemEl, plate, qData) {
     itemEl.style.opacity = "0";
     const plateContent = plate.querySelector("#plateContent");
     if (plateContent) plateContent.innerText = itemData.icon;
-    triggerSuccess(`Sempurna! Kamu berhasil menyelesaikan semua tugas bertingkat ini!`);
+    triggerSuccess(`Sempurna!`);
   } else {
-    triggerEncourage(`Bukan ${itemData.name}. Ingat instruksinya: Masukkan ${qData.nestedItems.find(b => b.id === currentStep.targetItemId).name}`);
+    triggerEncourage(`Bukan ${itemData.name}.`);
   }
 }
 
@@ -1164,9 +1219,9 @@ function handleItemDroppedOnTarget(itemData, itemEl, basket, qData) {
     const contents = basket.querySelector(".target-contents");
     if (contents) contents.innerText = itemData.icon;
     itemEl.style.display = "none";
-    triggerSuccess(`Bagus sekali! ${itemData.name} berhasil masuk ke dalam ${qData.targetContainer.label}!`);
+    triggerSuccess(`Bagus sekali!`);
   } else {
-    triggerEncourage(`Itu ${itemData.name}. Yang diminta: ${qData.targetItem.name}`);
+    triggerEncourage(`Itu ${itemData.name}.`);
   }
 }
 
@@ -1179,9 +1234,9 @@ function handleCategorizeDrop(itemData, itemEl, targetEl, qData) {
     const contents = targetEl.querySelector(".target-contents");
     if (contents) contents.innerText = itemData.icon;
     itemEl.style.display = "none";
-    triggerSuccess(`Hebat! ${itemData.name} masuk ke tempat yang tepat!`);
+    triggerSuccess(`Hebat!`);
   } else {
-    triggerEncourage(`Ayo perhatikan nama wadahnya dengan baik.`);
+    triggerEncourage(`Belum tepat.`);
   }
 }
 
@@ -1197,17 +1252,17 @@ function handleSequenceDragAction(itemData, itemEl, basket, qData) {
 
     currentStepIndex++;
     if (currentStepIndex < qData.steps.length) {
-      triggerEncourage(`Pintar! Sekarang lanjutkan langkah berikutnya.`);
+      triggerEncourage(`Pintar!`);
       setTimeout(() => {
         updateSequenceDragStepDisplay(qData);
         basket.classList.remove("highlight-hover");
-      }, 1000);
+      }, 1200);
     } else {
       isProcessing = true;
-      triggerSuccess(`Luar biasa! Kedua benda sudah dimasukkan sesuai urutan!`);
+      triggerSuccess(`Luar biasa!`);
     }
   } else {
-    triggerEncourage(`Belum tepat. Perhatikan langkah: ${currentStep.text}`);
+    triggerEncourage(`Belum tepat.`);
   }
 }
 
@@ -1255,7 +1310,7 @@ function createDropTarget(id, icon, label) {
 
 function setInstruction(text) {
   instructionText.innerText = text;
-  speakText(text);
+  speakInstructionWithProtection(text);
 }
 
 // Drag & Drop Pointer Events (Touch Android & Mouse)
@@ -1393,6 +1448,7 @@ function triggerSuccess(msg) {
   feedbackBanner.className = "feedback-banner show success";
   speakText(msg);
 
+  // Berikan waktu cukup (1,4 detik) agar ucapan pujian selesai diucapkan tuntas
   setTimeout(() => {
     const currentLevelData = gameLevelsConfig.find(l => l.level === currentLevelNumber);
     currentStepIndex = 0;
@@ -1403,7 +1459,7 @@ function triggerSuccess(msg) {
     } else {
       finishCurrentLevel();
     }
-  }, 2000);
+  }, 1400);
 }
 
 function triggerEncourage(hint) {
@@ -1414,7 +1470,7 @@ function triggerEncourage(hint) {
 
   setTimeout(() => {
     clearFeedback();
-  }, 2600);
+  }, 1200);
 }
 
 function clearFeedback() {
