@@ -3,7 +3,7 @@
  * Fitur:
  * - Touch & Mouse Drag and Drop (Pointer Events API) + Tap fallback
  * - Checklist visual interaktif untuk instruksi banyak kalimat
- * - Perbaikan Suara Umpan Balik: Tuntas, tidak terpotong saat transisi soal
+ * - Android & Tablet TTS Autoplay Fix (Unlocking Web Speech & Web Audio on First Touch)
  * - Efek audio positif lembut
  */
 
@@ -388,6 +388,8 @@ let currentStepIndex = 0;
 let isAudioEnabled = true;
 let isProcessing = false;
 let unlockInputTimer = null;
+let hasUserInteracted = false;
+let availableVoices = [];
 
 // DOM Referensi
 const viewMenu = document.getElementById("viewMenu");
@@ -407,12 +409,51 @@ const btnRepeatLevel = document.getElementById("btnRepeatLevel");
 const btnNextLevel = document.getElementById("btnNextLevel");
 
 // Web Audio API untuk nada lembut
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let audioCtx = null;
+
+function initAudioContext() {
+  if (!audioCtx) {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {
+      console.warn("AudioContext init error:", e);
+    }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+// Buka kunci Audio & TTS saat sentuhan pertama di Tablet Android
+function unlockAndroidAudio() {
+  if (hasUserInteracted) return;
+  hasUserInteracted = true;
+  initAudioContext();
+
+  if ('speechSynthesis' in window) {
+    // Memutar utterance kosong sesaat untuk meng-unlock izin audio Android browser
+    const dummy = new SpeechSynthesisUtterance('');
+    dummy.volume = 0;
+    window.speechSynthesis.speak(dummy);
+  }
+}
+
+// Muat daftar suara Android
+function loadVoices() {
+  if ('speechSynthesis' in window) {
+    availableVoices = window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => {
+      availableVoices = window.speechSynthesis.getVoices();
+    };
+  }
+}
 
 function playTone(type) {
-  if (!isAudioEnabled || !audioCtx) return;
+  if (!isAudioEnabled) return;
+  initAudioContext();
+  if (!audioCtx) return;
+
   try {
-    if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain);
@@ -446,7 +487,7 @@ function playTone(type) {
   }
 }
 
-// ================= SUARA TEXT-TO-SPEECH =================
+// ================= SUARA TEXT-TO-SPEECH (ANDROID-COMPATIBLE) =================
 function stopAllSpeech() {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
@@ -460,17 +501,28 @@ function speakText(text) {
   if (!cleanText) return;
 
   try {
-    window.speechSynthesis.cancel();
+    // Pada Android, jangan cancel terus-menerus jika tidak sedang bicara
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+    }
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = 'id-ID';
     utterance.rate = 0.85; // Tempo santai & artikulasi jelas
     utterance.pitch = 1.05;
 
-    const voices = window.speechSynthesis.getVoices();
-    const idVoice = voices.find(v => v.lang.includes('id') || v.lang.includes('ID'));
-    if (idVoice) utterance.voice = idVoice;
+    if (!availableVoices || availableVoices.length === 0) {
+      availableVoices = window.speechSynthesis.getVoices();
+    }
 
+    // Cari suara bahasa Indonesia, atau fallback suara default perangkat
+    const idVoice = availableVoices.find(v => v.lang && (v.lang.includes('id') || v.lang.includes('ID')));
+    if (idVoice) {
+      utterance.voice = idVoice;
+    }
+
+    // Bugfix Android Chrome TTS queue freeze
+    window.speechSynthesis.resume();
     window.speechSynthesis.speak(utterance);
   } catch (e) {
     console.warn("Speech synthesis error:", e);
@@ -492,6 +544,7 @@ function speakInstructionWithProtection(text) {
 
 // Event Listeners Navigasi
 btnHome.addEventListener("click", () => {
+  unlockAndroidAudio();
   viewGame.classList.remove("active");
   viewMenu.classList.add("active");
   successModal.classList.remove("active");
@@ -500,17 +553,24 @@ btnHome.addEventListener("click", () => {
 });
 
 btnVoiceToggle.addEventListener("click", () => {
+  unlockAndroidAudio();
   isAudioEnabled = !isAudioEnabled;
   btnVoiceToggle.innerText = isAudioEnabled ? "🔊 Suara: Nyala" : "🔇 Suara: Mati";
-  if (!isAudioEnabled) stopAllSpeech();
+  if (!isAudioEnabled) {
+    stopAllSpeech();
+  } else {
+    speakText("Suara aktif");
+  }
 });
 
 btnSpeakInstruction.addEventListener("click", () => {
+  unlockAndroidAudio();
   const textToRead = instructionText.innerText || "";
   speakInstructionWithProtection(textToRead);
 });
 
 btnRepeatLevel.addEventListener("click", () => {
+  unlockAndroidAudio();
   successModal.classList.remove("active");
   if (unlockInputTimer) clearTimeout(unlockInputTimer);
   stopAllSpeech();
@@ -518,6 +578,7 @@ btnRepeatLevel.addEventListener("click", () => {
 });
 
 btnNextLevel.addEventListener("click", () => {
+  unlockAndroidAudio();
   successModal.classList.remove("active");
   if (unlockInputTimer) clearTimeout(unlockInputTimer);
   stopAllSpeech();
@@ -541,7 +602,10 @@ function renderLevelMenu() {
       <h3>${lvl.title}</h3>
       <p>${lvl.desc}</p>
     `;
-    card.addEventListener("click", () => startLevel(lvl.level));
+    card.addEventListener("click", () => {
+      unlockAndroidAudio();
+      startLevel(lvl.level);
+    });
     levelGrid.appendChild(card);
   });
 }
@@ -1287,6 +1351,7 @@ function createGameItem(icon, name, onClick) {
   btn.setAttribute("aria-label", name);
 
   btn.addEventListener("click", (e) => {
+    unlockAndroidAudio();
     if (btn.dataset.wasDragged === "true") {
       delete btn.dataset.wasDragged;
       return;
@@ -1319,6 +1384,7 @@ function enableTouchAndMouseDrag(itemEl, targetEl, onDropCallback) {
   let startX, startY, origX = 0, origY = 0;
 
   itemEl.addEventListener("pointerdown", (e) => {
+    unlockAndroidAudio();
     if (isProcessing) return;
     isDragging = true;
     itemEl.setPointerCapture(e.pointerId);
@@ -1375,6 +1441,7 @@ function enableTouchAndMouseDragToMultiple(itemEl, targetElements, onDropCallbac
   let startX, startY, origX = 0, origY = 0;
 
   itemEl.addEventListener("pointerdown", (e) => {
+    unlockAndroidAudio();
     if (isProcessing) return;
     isDragging = true;
     itemEl.setPointerCapture(e.pointerId);
@@ -1448,7 +1515,7 @@ function triggerSuccess(msg) {
   feedbackBanner.className = "feedback-banner show success";
   speakText(msg);
 
-  // Berikan waktu cukup (1,4 detik) agar ucapan pujian selesai diucapkan tuntas
+  // Berikan jeda waktu yang lapang (2,2 detik) agar ucapan pujian selesai diucapkan tuntas sampai kata terakhir
   setTimeout(() => {
     const currentLevelData = gameLevelsConfig.find(l => l.level === currentLevelNumber);
     currentStepIndex = 0;
@@ -1459,7 +1526,7 @@ function triggerSuccess(msg) {
     } else {
       finishCurrentLevel();
     }
-  }, 1400);
+  }, 2200);
 }
 
 function triggerEncourage(hint) {
@@ -1470,7 +1537,7 @@ function triggerEncourage(hint) {
 
   setTimeout(() => {
     clearFeedback();
-  }, 1200);
+  }, 1800);
 }
 
 function clearFeedback() {
@@ -1496,7 +1563,12 @@ function finishCurrentLevel() {
   speakText("Luar biasa sekali! Kamu berhasil menyelesaikan semua instruksi di tingkat ini.");
 }
 
+// Listen untuk unlock audio di tablet saat user menyentuh layar di mana saja
+window.addEventListener("pointerdown", unlockAndroidAudio, { once: true });
+window.addEventListener("touchstart", unlockAndroidAudio, { once: true });
+
 // Render Menu Level Awal
 window.addEventListener("DOMContentLoaded", () => {
+  loadVoices();
   renderLevelMenu();
 });
